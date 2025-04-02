@@ -2,4 +2,5 @@ chennai
 bangalore
 namakkal
 erode
+goa
 salem
