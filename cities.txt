@@ -4,3 +4,398 @@ namakkal
 erode
 goa
 salem
+package com.cts.ems;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.cts.ems.allinterface.UserService;
+import com.cts.ems.dto.AttendeeUserDto;
+import com.cts.ems.dto.LoginUserDto;
+import com.cts.ems.dto.OrganizerUserDto;
+import com.cts.ems.dto.PaymentUserDto;
+import com.cts.ems.dto.UseruserDto;
+import com.cts.ems.entity.*;
+import com.cts.ems.entity.Feedback;
+import com.cts.ems.entity.User;
+import com.cts.ems.exception.AttendeeException;
+import com.cts.ems.exception.OrganizerException;
+import com.cts.ems.exception.UserException;
+import com.cts.ems.repository.*;
+import com.cts.ems.service.AttendeeServiceImp;
+import com.cts.ems.service.OrganizerServiceImp;
+import com.cts.ems.service.UserServiceImp;
+
+import static org.mockito.Mockito.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+@SpringBootTest
+public class UserTest {
+
+	 	@InjectMocks
+	    private UserServiceImp userService;
+	 	@InjectMocks
+	    private AttendeeServiceImp attendeeService;
+	 	@InjectMocks
+	    private OrganizerServiceImp organizerService;
+
+	    @Mock
+	    private UserRepository userRepo;
+
+	    @Mock
+	    private AttendeeRepository attendeeRepo;
+
+	    @Mock
+	    private OrganizerRepository organizerRepo;
+
+	    @Mock
+	    private EventRepository eventRepo;
+
+
+    @Test
+    public void testAddUser() {
+    	UseruserDto userDto = UseruserDto.builder()
+                .age(25)
+                .contactNumber("9876543210")
+                .email("test@example.com")
+                .gender("Male")
+                .name("Test User")
+                .password("password")
+                .build();
+
+        Attendee attendee = new Attendee();
+        when(attendeeRepo.save(any(Attendee.class))).thenReturn(attendee);
+        UseruserDto result = userService.addUser(userDto);
+        assertNotNull(result);
+
+    }
+
+    // --- Test deleteUser ---
+
+
+@Test
+void testDeleteUser_Success() throws UserException {
+    User user = new User();
+    user.setUserId("1");
+    user.setAge(25);
+    user.setContactNumber("1234567890");
+    user.setEmail("test@example.com");
+    user.setGender("Male");
+    user.setName("John Doe");
+    user.setPassword("password123");
+    
+    when(userRepo.findById("1")).thenReturn(Optional.of(user));
+
+    String result = userService.deleteUser("1");
+
+    assertNotNull(result);
+   
+    assertEquals("Deleted the user with userid : "+user.getUserId(), result);
+    verify(userRepo, times(1)).deleteById("1");
+}
+    
+    @Test
+    void testDeleteUser_NotFound() {
+        when(userRepo.findById("1")).thenReturn(Optional.empty());
+
+        assertThrows(UserException.class, () -> userService.deleteUser("1"));
+    }
+    
+    // --- Test updateUser ---
+    @Test
+    void testUpdateUser_Success() throws UserException {
+        User oldUser = new User();
+        oldUser.setUserId("1");
+
+        UseruserDto newUser = new UseruserDto();
+        newUser.setName("New Name");
+        newUser.setAge(30);
+        newUser.setEmail("new@email.com");
+        newUser.setContactNumber("9999999999");
+        newUser.setGender("Male");
+        newUser.setPassword("newpass");
+
+        when(userRepo.findById("1")).thenReturn(Optional.of(oldUser));
+        when(userRepo.save(any(User.class))).thenReturn(oldUser);
+
+        UseruserDto result = userService.updateUser("1", newUser);
+
+        assertNotNull(result);
+        assertEquals("New Name", result.getName());
+    }
+    @Test
+    void testUpdateUser_NotFound() {
+        when(userRepo.findById("1")).thenReturn(Optional.empty());
+
+        assertThrows(UserException.class, () -> userService.updateUser("1", new UseruserDto()));
+    }
+    // --- Test login ---
+    @Test
+    void testLogin_Success() throws UserException {
+        User user = new User();
+        user.setName("username");
+        user.setPassword("pass");
+
+        when(userRepo.findAll()).thenReturn(List.of(user));
+
+        LoginUserDto login = new LoginUserDto();
+        login.setName("username");
+        login.setPassword("pass");
+
+        UseruserDto result = userService.login(login);
+
+        assertNotNull(result);
+        assertEquals("username", result.getName());
+    }
+    @Test
+    void testLogin_Failure() {
+        when(userRepo.findAll()).thenReturn(Collections.emptyList());
+
+        LoginUserDto login = new LoginUserDto();
+        login.setName("wrong");
+        login.setPassword("wrong");
+
+        assertThrows(UserException.class, () -> userService.login(login));
+    }
+
+    // --- Test getUser ---
+
+@Test
+void testGetUser_Success() throws UserException {
+    User user = new User();
+    user.setUserId("1");
+    user.setName("User");
+    user.setAge(25);
+    user.setContactNumber("1234567890");
+    user.setEmail("user@example.com");
+    user.setGender("Male");
+    user.setPassword("password123");
+
+    when(userRepo.findById("1")).thenReturn(Optional.of(user));
+
+    UseruserDto result = userService.getUser("1");
+
+    assertNotNull(result);
+    assertEquals("User", result.getName());
+    assertEquals(25, result.getAge());
+    assertEquals("1234567890", result.getContactNumber());
+    assertEquals("user@example.com", result.getEmail());
+    assertEquals("Male", result.getGender());
+    assertEquals("password123", result.getPassword());
+}
+
+    @Test
+    void testGetUser_NotFound() {
+        when(userRepo.findById("1")).thenReturn(Optional.empty());
+
+        assertThrows(UserException.class, () -> userService.getUser("1"));
+    }
+
+    // --- Test getAllUser ---
+
+
+
+@Test
+void testGetAllUser_Success() throws UserException {
+    User user1 = new User();
+    user1.setUserId("1");
+    user1.setName("User1");
+    user1.setAge(25);
+    user1.setContactNumber("1234567890");
+    user1.setEmail("user1@example.com");
+    user1.setGender("Male");
+    user1.setPassword("password1");
+
+    User user2 = new User();
+    user2.setUserId("2");
+    user2.setName("User2");
+    user2.setAge(30);
+    user2.setContactNumber("0987654321");
+    user2.setEmail("user2@example.com");
+    user2.setGender("Female");
+    user2.setPassword("password2");
+
+    when(userRepo.findAll()).thenReturn(List.of(user1, user2));
+
+    List<UseruserDto> result = userService.getAllUser();
+
+    assertNotNull(result);
+    assertEquals(2, result.size());
+
+    assertEquals("User1", result.get(0).getName());
+    assertEquals("User2", result.get(1).getName());
+}
+
+
+
+    // --- Test updateName ---
+    @Test
+    void testUpdateName_Success() throws UserException {
+        User user = new User();
+        user.setUserId("1");
+        user.setName("Old Name");
+
+        when(userRepo.findById("1")).thenReturn(Optional.of(user));
+        when(userRepo.save(any(User.class))).thenReturn(user);
+
+        UseruserDto result = userService.updateName("1", "New Name");
+
+        assertNotNull(result);
+        assertEquals("New Name", result.getName());
+    }
+
+    @Test
+    void testUpdateName_UserNotFound() {
+        when(userRepo.findById("1")).thenReturn(Optional.empty());
+
+        assertThrows(UserException.class, () -> userService.updateName("1", "New Name"));
+    }
+    
+   
+
+
+
+@Test
+void testGetAllAttendees_Success() throws AttendeeException {
+    // Create a mock Ticket
+    Ticket ticket = Ticket.builder()
+            .ticketId("T123")
+            .bookingDate(LocalDateTime.now())
+            .status("CONFIRMED")
+            .build();
+
+    // Create a mock Feedback
+    Feedback feedback = Feedback.builder()
+            .feedbackId("F123")
+            .comment("Great event!")
+            .rating(5)
+            .submittedTimestamp(LocalDateTime.now())
+            .event(Event.builder().eventId("E123").build())
+            .build();
+
+    // Create a mock Notification
+    Notification notification = Notification.builder()
+            .event(Event.builder().eventId("E123").build())
+            .message("Event reminder")
+            .sentTimeStamp(LocalDateTime.now())
+            .build();
+
+    // Create a mock Attendee with tickets, feedbacks, and notifications
+    Attendee attendee = new Attendee();
+    attendee.setUserId("attendee123");
+    attendee.setTickets(List.of(ticket));  // Set the list of tickets
+    attendee.setFeedbacks(List.of(feedback));  // Set the list of feedbacks
+    attendee.setNotifications(List.of(notification));  // Set the list of notifications
+
+    // Mock repository methods
+    when(attendeeRepo.findAll()).thenReturn(List.of(attendee));
+    when(attendeeRepo.findById("attendee123")).thenReturn(Optional.of(attendee));
+
+    // Call the service method
+    List<AttendeeUserDto> attendees = attendeeService.getAllAttendees();
+
+    // Assertions
+    assertNotNull(attendees);
+    assertEquals(1, attendees.size()); // Only one attendee
+    assertEquals("attendee123", attendees.get(0).getUserId());
+    assertNotNull(attendees.get(0).getTickets()); // Tickets should not be null
+    assertEquals(1, attendees.get(0).getTickets().size()); // One ticket attached
+    assertEquals("T123", attendees.get(0).getTickets().get(0).getTicketId()); // Ticket ID should match
+
+    // Assert feedbacks are correctly mapped
+    assertNotNull(attendees.get(0).getFeedbacks());
+    assertEquals(1, attendees.get(0).getFeedbacks().size());
+    assertEquals("Great event!", attendees.get(0).getFeedbacks().get(0).getComment());
+    assertEquals(5, attendees.get(0).getFeedbacks().get(0).getRating());
+
+    // Assert notifications are correctly mapped
+    assertNotNull(attendees.get(0).getNotifications());
+    assertEquals(1, attendees.get(0).getNotifications().size());
+    assertEquals("Event reminder", attendees.get(0).getNotifications().get(0).getMessage());
+}
+
+
+    @Test
+    void testGetOrganizerById_Success() throws OrganizerException {
+        String organizerId = "org123";
+        Organizer organizer = new Organizer();
+        User user = new User();
+        user.setUserId(organizerId);
+        user.setName("Organizer Name");
+        user.setEmail("org@example.com");
+        user.setGender("Male");
+        user.setAge(30);
+        user.setContactNumber("9876543210");
+
+        organizer.setUser(user);
+
+        Event event = new Event();
+        event.setEventId("event001");
+        event.setName("Music Concert");
+        event.setCategory("Music");
+        event.setLocation("New York");
+        event.setRegDate(LocalDateTime.now());
+
+        organizer.setEventsOrganized(List.of(event));
+
+        when(organizerRepo.existsById(organizerId)).thenReturn(true);
+        when(organizerRepo.findById(organizerId)).thenReturn(Optional.of(organizer));
+
+        OrganizerUserDto result = organizerService.getOrganizerById(organizerId);
+
+        assertNotNull(result);
+        assertEquals("Organizer Name", result.getName());
+        assertEquals(1, result.getEvents().size());
+    }
+
+
+
+
+
+
+    
+   
+
+    @Test
+    void testGetAllPayments_Success() throws OrganizerException {
+        String organizerId = "org123";
+        String eventId = "event123";
+
+        Organizer organizer = new Organizer();
+        Event event = new Event();
+        event.setEventId(eventId);
+
+        Payment payment = new Payment();
+        payment.setAmount(1000.0);
+        payment.setPaymentMethod("Credit Card");
+        payment.setPaymentId("pay123");
+        payment.setPaymentStatus("SUCCESS");
+        payment.setPaymentDate(LocalDateTime.now());
+
+        Ticket ticket = new Ticket();
+        ticket.setPayment(payment);
+
+        event.setTickets(List.of(ticket));
+        organizer.setEventsOrganized(List.of(event));
+
+        when(organizerRepo.existsById(organizerId)).thenReturn(true);
+        when(organizerRepo.findById(organizerId)).thenReturn(Optional.of(organizer));
+
+        List<PaymentUserDto> payments = organizerService.getAllPayments(organizerId, eventId);
+
+        assertEquals(1, payments.size());
+        assertEquals("Credit Card", payments.get(0).getPaymentMethod());
+    }
+
+
+}
+
